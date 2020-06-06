@@ -1,7 +1,7 @@
 const express = require('express')
 const {
   ApolloServer,
-  gql
+  gql,
 } = require('apollo-server-express')
 const notes = require('./data/notes')
 
@@ -18,13 +18,30 @@ const typeDefs = gql `
   type Query {
     hello: String
     notes: [Note]!
+    note(id:ID!): Note!
+  }
+
+  type Mutation {
+    newNote(content: String!): Note!
   }
 `
 
 const resolvers = {
   Query: {
     hello: () => 'still Good to go',
-    notes: () => notes
+    notes: () => notes,
+    note: (parent, args, context, info) => notes.find(note => note.id === args.id)
+  },
+  Mutation: {
+    newNote: (parent, args, context, info) => {
+      const newNote = {
+        id: String(notes.length + 1),
+        content: args.content,
+        author: 'Ike Njoku'
+      }
+      notes.push(newNote)
+      return newNote
+    }
   }
 }
 
