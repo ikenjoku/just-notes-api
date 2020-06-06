@@ -1,0 +1,19 @@
+{
+  "name": "just-notes-api",
+  "version": "1.0.0",
+  "description": "API for just-notes cross platform clients",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ikenjoku/just-notes-api.git"
+  },
+  "author": "Ikechukwu Njoku",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/ikenjoku/just-notes-api/issues"
+  },
+  "homepage": "https://github.com/ikenjoku/just-notes-api#readme"
+}
