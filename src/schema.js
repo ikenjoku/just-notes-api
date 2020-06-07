@@ -5,10 +5,20 @@ const {
 const typeDefs = gql `
   scalar DateTime
 
+  type User {
+    id: ID!,
+    username: String!,
+    email: String!,
+    avatar: String!
+    notes: [Note]!
+    createdAt: DateTime!
+    updatedAt: DateTime!
+  }
+
   type Note {
     id: ID!
     content: String!
-    author: String!
+    author: User!
     createdAt: DateTime!
     updatedAt: DateTime!
   }
@@ -22,6 +32,8 @@ const typeDefs = gql `
     newNote(content: String!): Note!
     updateNote(content: String!, id:ID!): Note!
     deleteNote(id: ID!): Boolean!
+    signUp(email: String!, password: String!, username: String!): String!
+    signIn(email: String, password: String!, username: String): String!
   }
 `
 
