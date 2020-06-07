@@ -7,6 +7,9 @@ const {
 const resolvers = require('./resolvers')
 const typeDefs = require('./schema')
 const models = require('./data/models')
+const {
+  validateJWT
+} = require('./util/authHelpers')
 
 const app = express()
 const port = process.env.PORT || 1414
@@ -17,10 +20,15 @@ db.connect(DB_URL)
 const server = new ApolloServer({
   typeDefs,
   resolvers,
-  context: () => {
+  context: async ({
+    req
+  }) => {
+    const token = req.headers.authorization
+    const user = await validateJWT(token)
 
     return {
-      models
+      models,
+      user
     }
   }
 })
