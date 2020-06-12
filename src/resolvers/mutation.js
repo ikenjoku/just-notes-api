@@ -1,10 +1,6 @@
-const jwt = require('jsonwebtoken')
-const bcrypt = require('bcrypt')
-const {
-  AuthenticationError,
-} = require('apollo-server-express')
+const { AuthenticationError, ValidationError, ForbiddenError } = require('apollo-server-express')
+const mongoose = require('mongoose')
 require('dotenv').config()
-
 const gravatar = require('../util/gravatar')
 const {
   generateJWT,
@@ -13,27 +9,36 @@ const {
 } = require('../util/authHelpers')
 
 module.exports = {
-  newNote: async (parent, {
-    content
-  }, {
-    models
-  }, info) => {
+  newNote: async (parent, { content }, { models, user }, info) => {
     try {
+      if (!user) {
+        throw new AuthenticationError('Please sign in to create a note.')
+      }
       return await models.Note.create({
         content,
-        author: 'Ike Njoku'
+        author: mongoose.Types.ObjectId(user.id)
       })
     } catch (error) {
-      console.log('Error creating note')
+      throw new AuthenticationError(error.message)
     }
   },
-  updateNote: async (parent, {
-    content,
-    id
-  }, {
-    models
-  }, info) => {
+
+  updateNote: async (parent, { content, id }, { models, user }, info) => {
     try {
+      if (!user) {
+        throw new AuthenticationError('Please sign in to update a note.')
+      }
+
+      const noteToUpdate = await  models.Note.findById(id)
+
+      if (!noteToUpdate) {
+        throw new ValidationError('This note does not exist.')
+      }
+
+      if (noteToUpdate && String(noteToUpdate.author) !== user.id ) {
+        throw new ForbiddenError("You're not allowed to perform this operation.")
+      }
+
       return await models.Note.findOneAndUpdate({
         _id: id
       }, {
@@ -44,30 +49,38 @@ module.exports = {
         new: true
       })
     } catch (error) {
-      console.log('Error updating note')
+      throw new AuthenticationError(error.message)
     }
   },
-  deleteNote: async (parent, {
-    id
-  }, {
-    models
-  }, info) => {
+
+  deleteNote: async (parent, { id }, { models, user }, info) => {
     try {
-      await models.Note.findOneAndDelete({
-        _id: id
-      })
+      if (!user) {
+        throw new AuthenticationError('Please sign in to delete a note.')
+      }
+
+      const noteToDelete = await  models.Note.findById(id)
+
+      if (!noteToDelete) {
+        throw new ValidationError('This note does not exist')
+      }
+
+      if (noteToDelete && String(noteToDelete.author) !== user.id ) {
+        throw new ForbiddenError("You're not allowed to perform this operation")
+      }
+
+      await models.Note.findOneAndDelete({ _id: id })
       return true
     } catch (error) {
       return false
     }
   },
+
   signUp: async (parent, {
     email,
     password,
     username
-  }, {
-    models
-  }, info) => {
+  }, { models }, info) => {
     email = email.trim().toLowerCase()
     const avatar = gravatar(email)
     try {
@@ -89,9 +102,7 @@ module.exports = {
     email,
     password,
     username
-  }, {
-    models
-  }, info) => {
+  }, { models }, info) => {
     try {
       if (email) {
         email = email.trim().toLowerCase()
@@ -99,12 +110,11 @@ module.exports = {
       if (username) {
         username = username.trim()
       }
+      if (!username && !email) {
+        throw new AuthenticationError('Please provide your username or email address')
+      }
       const user = await models.User.findOne({
-        $or: [{
-          email
-        }, {
-          username
-        }]
+        $or: [{ email }, { username }]
       })
       if (!user) {
         throw new AuthenticationError('User does not exist')
@@ -117,7 +127,42 @@ module.exports = {
       const token = await generateJWT(user)
       return token
     } catch (error) {
-      throw new AuthenticationError('Error signing in')
+      throw new AuthenticationError(error.message)
     }
-  }
+  },
+
+  toggleFavorite: async (parent, { id }, { models, user }, info) => {
+    try {
+      if (!user) {
+        throw new AuthenticationError('Please sign in to like a note')
+      }
+
+      const noteToFavorite = await models.Note.findById(id)
+      if (!noteToFavorite) {
+        throw new ValidationError('Note does not exist')
+      }
+      const isAlreadyFavoritedByUser = noteToFavorite.favoritedBy.includes(user.id)
+      if (isAlreadyFavoritedByUser) {
+        return await models.Note.findByIdAndUpdate({
+          _id: id
+        }, {
+          $pull: { favoritedBy: mongoose.Types.ObjectId(user.id) },
+          $inc: { favoriteCount: -1 }
+        },{
+          new: true
+        })
+      } else {
+        return await models.Note.findByIdAndUpdate({
+          _id: id
+        },{
+          $push: { favoritedBy: mongoose.Types.ObjectId(user.id) },
+          $inc: { favoriteCount: 1 }
+        }, {
+          new: true
+        })
+      }
+    } catch (error) {
+      throw new Error(error.message)
+    }
+  },
 }
