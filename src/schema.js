@@ -26,12 +26,19 @@ const typeDefs = gql `
     updatedAt: DateTime!
   }
 
+  type NoteFeed {
+    notes: [Note]!
+    cursor: String!
+    hasNextPage: Boolean!
+  }
+
   type Query {
     me: User!,
-    user(username: String!): User
-    users: [User]!
     notes: [Note]!
     note(id:ID!): Note!
+    users: [User]!
+    user(username: String!): User
+    noteFeed(cursor: String, limit: Int): NoteFeed
   }
 
   type Mutation {
